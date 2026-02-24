@@ -24,11 +24,11 @@ class ReportController extends Controller
     public function financial(Request $request)
     {
         $query = Sale::query();
-        
+
         if ($request->has('start_date') && $request->start_date) {
             $query->where('sale_date', '>=', $request->start_date);
         }
-        
+
         if ($request->has('end_date') && $request->end_date) {
             $query->where('sale_date', '<=', $request->end_date . ' 23:59:59');
         }
@@ -94,11 +94,11 @@ class ReportController extends Controller
     public function sales(Request $request)
     {
         $query = Sale::with('product');
-        
+
         if ($request->has('start_date') && $request->start_date) {
             $query->where('sale_date', '>=', $request->start_date);
         }
-        
+
         if ($request->has('end_date') && $request->end_date) {
             $query->where('sale_date', '<=', $request->end_date . ' 23:59:59');
         }
@@ -132,7 +132,7 @@ class ReportController extends Controller
         $products = \App\Models\Product::orderBy('name')->paginate(20);
 
         $allProducts = \App\Models\Product::all();
-        
+
         $statistics = [
             'totalProducts' => $allProducts->count(),
             'totalStock' => $allProducts->sum('current_stock'),

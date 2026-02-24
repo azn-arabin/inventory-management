@@ -82,7 +82,7 @@ class ProductController extends Controller
 
         // Calculate the sold quantity before update
         $soldQuantity = $product->opening_stock - $product->current_stock;
-        
+
         // Validate that new opening stock is not less than sold quantity
         if ($validated['opening_stock'] < $soldQuantity) {
             return back()->withErrors([

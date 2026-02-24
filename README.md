@@ -16,6 +16,7 @@ This system implements a professional-grade inventory management solution with p
 ## 📊 Key Features
 
 ### 1. **Complete Accounting System**
+
 - Implements proper double-entry bookkeeping principles
 - 7 journal entries per sale transaction:
   - Cash/Accounts Receivable (Debit)
@@ -27,6 +28,7 @@ This system implements a professional-grade inventory management solution with p
   - Balance adjustment automatically
 
 ### 2. **Financial Reporting**
+
 - **Financial Report**: Total sales, expenses, profit margin with date filtering
 - **Journal Entries**: Complete audit trail of all transactions
 - **Chart of Accounts**: Full account hierarchy with balances
@@ -34,6 +36,7 @@ This system implements a professional-grade inventory management solution with p
 - **Inventory Report**: Stock levels, values, and profitability analysis
 
 ### 3. **Inventory Management**
+
 - Real-time stock tracking
 - Low stock alerts
 - Product profitability analysis
@@ -94,6 +97,7 @@ This system implements a professional-grade inventory management solution with p
 ### Example: Sale of 10 units @ ৳100 each (Purchase price: ৳60, Discount: ৳50, Paid: ৳800)
 
 **Calculations:**
+
 - Subtotal: 10 × ৳100 = ৳1,000
 - Discount: ৳50
 - After Discount: ৳950
@@ -105,22 +109,23 @@ This system implements a professional-grade inventory management solution with p
 
 **Journal Entries Created:**
 
-| Account              | Debit   | Credit  |
-|----------------------|---------|---------|
-| Cash                 | ৳800.00 |         |
-| Accounts Receivable  | ৳197.50 |         |
-| Sales Revenue        |         | ৳950.00 |
-| Discount Given       | ৳50.00  |         |
-| VAT Payable          |         | ৳47.50  |
-| Cost of Goods Sold   | ৳600.00 |         |
-| Inventory            |         | ৳600.00 |
-| **TOTALS**           | ৳1,647.50 | ৳1,647.50 |
+| Account             | Debit     | Credit    |
+| ------------------- | --------- | --------- |
+| Cash                | ৳800.00   |           |
+| Accounts Receivable | ৳197.50   |           |
+| Sales Revenue       |           | ৳950.00   |
+| Discount Given      | ৳50.00    |           |
+| VAT Payable         |           | ৳47.50    |
+| Cost of Goods Sold  | ৳600.00   |           |
+| Inventory           |           | ৳600.00   |
+| **TOTALS**          | ৳1,647.50 | ৳1,647.50 |
 
 ✅ **Debits = Credits** (Balanced!)
 
 ## 🚀 Installation & Setup
 
 ### Prerequisites
+
 - PHP 8.1 or higher
 - Composer
 - MySQL 5.7+
@@ -190,6 +195,7 @@ Visit: **http://localhost:8002**
 Navigate to **Products → Add Product**
 
 Fill in:
+
 - Product Name
 - Description (optional)
 - Purchase Price (cost you paid)
@@ -201,6 +207,7 @@ Fill in:
 Navigate to **Sales → New Sale**
 
 The system will:
+
 - Show available products with stock levels
 - Calculate VAT automatically
 - Show real-time sale summary
@@ -212,6 +219,7 @@ The system will:
 Navigate to **Reports → Financial Report**
 
 Features:
+
 - Date-wise filtering (start date and end date)
 - Total sales and expenses
 - Gross profit calculation
@@ -224,6 +232,7 @@ Features:
 Navigate to **Reports → Journal Entries**
 
 View:
+
 - All double-entry transactions
 - Debit and credit amounts
 - Account details
@@ -235,6 +244,7 @@ View:
 Navigate to **Reports → Inventory Report**
 
 Analyze:
+
 - Current stock levels
 - Inventory value (at purchase price)
 - Potential revenue (at sell price)
@@ -287,7 +297,7 @@ public static function calculateSaleAmounts($quantity, $unitPrice, $discount, $v
     $afterDiscount = $subtotal - $discount;
     $vatAmount = $afterDiscount * $vatRate;
     $totalAmount = $afterDiscount + $vatAmount;
-    
+
     return compact('subtotal', 'vatAmount', 'totalAmount');
 }
 ```
@@ -352,31 +362,35 @@ task2-inventory-management/
 ## 🛠️ Troubleshooting
 
 ### Issue: "Insufficient stock" error
+
 **Solution**: Check product current stock. Add more opening stock or wait for stock replenishment.
 
 ### Issue: Journal entries not balanced
+
 **Solution**: This should never happen due to automated calculations. Check the `createJournalEntries()` method logic.
 
 ### Issue: Negative account balances
+
 **Solution**: Verify the account type's normal balance side in the `isDebitNormal()` method.
 
 ### Issue: VAT calculation incorrect
+
 **Solution**: Check `VAT_RATE` in `.env` file. Default is 0.05 (5%).
 
 ## 📊 Default Accounts Configuration
 
 The system seeds these accounts automatically:
 
-| Code | Account Name           | Type      | Normal Balance |
-|------|------------------------|-----------|----------------|
-| 1110 | Cash                   | Asset     | Debit          |
-| 1120 | Accounts Receivable    | Asset     | Debit          |
-| 1130 | Inventory              | Asset     | Debit          |
-| 2120 | VAT Payable            | Liability | Credit         |
-| 3100 | Owner's Equity         | Equity    | Credit         |
-| 4100 | Sales Revenue          | Revenue   | Credit         |
-| 4200 | Discount Given         | Revenue   | Debit          |
-| 5100 | Cost of Goods Sold     | Expense   | Debit          |
+| Code | Account Name        | Type      | Normal Balance |
+| ---- | ------------------- | --------- | -------------- |
+| 1110 | Cash                | Asset     | Debit          |
+| 1120 | Accounts Receivable | Asset     | Debit          |
+| 1130 | Inventory           | Asset     | Debit          |
+| 2120 | VAT Payable         | Liability | Credit         |
+| 3100 | Owner's Equity      | Equity    | Credit         |
+| 4100 | Sales Revenue       | Revenue   | Credit         |
+| 4200 | Discount Given      | Revenue   | Debit          |
+| 5100 | Cost of Goods Sold  | Expense   | Debit          |
 
 ## 🎓 Learning Outcomes
 

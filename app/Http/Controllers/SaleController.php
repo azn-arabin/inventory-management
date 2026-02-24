@@ -19,7 +19,7 @@ class SaleController extends Controller
         $sales = Sale::with('product')
             ->orderBy('sale_date', 'desc')
             ->paginate(20);
-        
+
         return view('sales.index', compact('sales'));
     }
 
@@ -30,7 +30,7 @@ class SaleController extends Controller
     {
         $products = Product::where('current_stock', '>', 0)->get();
         $vatRate = env('VAT_RATE', 0.05);
-        
+
         return view('sales.create', compact('products', 'vatRate'));
     }
 
@@ -49,10 +49,10 @@ class SaleController extends Controller
         ]);
 
         DB::beginTransaction();
-        
+
         try {
             $product = Product::findOrFail($validated['product_id']);
-            
+
             // Check stock availability
             if ($product->current_stock < $validated['quantity']) {
                 throw new \Exception('Insufficient stock! Available: ' . $product->current_stock);

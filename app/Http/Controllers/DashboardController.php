@@ -19,7 +19,7 @@ class DashboardController extends Controller
         $totalSales = Sale::count();
         $totalRevenue = Sale::sum('total_amount');
         $totalDue = Sale::sum('due_amount');
-        
+
         // Low stock products
         $lowStockProducts = Product::where('current_stock', '<', 10)
             ->orderBy('current_stock', 'asc')
