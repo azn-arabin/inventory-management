@@ -48,7 +48,7 @@
                     <td>{{ $account->name }} ({{ $account->code }})</td>
                     <td class="text-right">৳{{ number_format($account->balance, 2) }}</td>
                 </tr>
-                @php $totalRevenue += ($account->type == 'revenue' && $account->code != '4200') ? $account->balance : -$account->balance; @endphp
+                @php $totalRevenue += $account->balance; @endphp
             @endforeach
             <tr style="font-weight: bold; background-color: #f3f4f6;">
                 <td>Total Revenue</td>

@@ -48,6 +48,11 @@ class Sale extends Model
         return $this->hasMany(JournalEntry::class, 'transaction_id')->where('transaction_type', 'sale');
     }
 
+    public function payments()
+    {
+        return $this->hasMany(Payment::class);
+    }
+
     /**
      * Calculate all sale amounts
      */

@@ -26,12 +26,13 @@ class SaleController extends Controller
     /**
      * Show the form for creating a new sale
      */
-    public function create()
+    public function create(Request $request)
     {
         $products = Product::where('current_stock', '>', 0)->get();
         $vatRate = env('VAT_RATE', 0.05);
+        $selectedProductId = $request->query('product_id');
 
-        return view('sales.create', compact('products', 'vatRate'));
+        return view('sales.create', compact('products', 'vatRate', 'selectedProductId'));
     }
 
     /**
@@ -66,6 +67,17 @@ class SaleController extends Controller
 
             // Calculate amounts
             $amounts = Sale::calculateSaleAmounts($quantity, $unitPrice, $discount, $vatRate);
+
+            // Validate discount does not exceed subtotal
+            if ($discount > $amounts['subtotal']) {
+                throw new \Exception('Discount (৳' . number_format($discount, 2) . ') cannot exceed subtotal (৳' . number_format($amounts['subtotal'], 2) . ').');
+            }
+
+            // Validate paid amount does not exceed total amount
+            if ($paidAmount > $amounts['total_amount']) {
+                throw new \Exception('Paid amount (৳' . number_format($paidAmount, 2) . ') cannot exceed total amount (৳' . number_format($amounts['total_amount'], 2) . '). Overpayment is not allowed.');
+            }
+
             $dueAmount = $amounts['total_amount'] - $paidAmount;
 
             // Create sale record
@@ -156,9 +168,10 @@ class SaleController extends Controller
             $accountsReceivableAccount->updateBalance($sale->due_amount, true);
         }
 
-        // Journal Entry 3: Record Sales Revenue
-        // Credit: Sales Revenue (Revenue)
-        $revenueAmount = $sale->subtotal - $sale->discount;
+        // Journal Entry 3: Record Sales Revenue (Gross method)
+        // Credit: Sales Revenue (Revenue) - use GROSS subtotal so that
+        // Discount Given (debit) offsets it, keeping double-entry balanced
+        $revenueAmount = $sale->subtotal; // gross subtotal before discount
         $entry3 = JournalEntry::create([
             'account_id' => $salesRevenueAccount->id,
             'transaction_type' => 'sale',
@@ -235,8 +248,16 @@ class SaleController extends Controller
      */
     public function show(Sale $sale)
     {
-        $sale->load(['product', 'journalEntries.account']);
-        return view('sales.show', compact('sale'));
+        $sale->load(['product', 'journalEntries.account', 'payments']);
+
+        // Also load payment journal entries
+        $paymentIds = $sale->payments->pluck('id');
+        $paymentJournalEntries = JournalEntry::with('account')
+            ->where('transaction_type', 'payment')
+            ->whereIn('transaction_id', $paymentIds)
+            ->get();
+
+        return view('sales.show', compact('sale', 'paymentJournalEntries'));
     }
 
     /**
