@@ -17,11 +17,16 @@
                     <option value="{{ $product->id }}" 
                             data-price="{{ $product->sell_price }}"
                             data-stock="{{ $product->current_stock }}"
-                            {{ old('product_id') == $product->id ? 'selected' : '' }}>
+                            {{ (old('product_id', $selectedProductId) == $product->id) ? 'selected' : '' }}>
                         {{ $product->name }} - Stock: {{ $product->current_stock }} - Price: ৳{{ number_format($product->sell_price, 2) }}
                     </option>
                 @endforeach
             </select>
+            @if($products->isEmpty())
+                <small style="color: #ef4444;">No products with available stock. <a href="{{ route('products.create') }}" style="color: #0062cc;">+ Add a Product</a></small>
+            @else
+                <small class="text-muted">Don't see your product? <a href="{{ route('products.create') }}" style="color: #0062cc;">+ Add New Product</a></small>
+            @endif
         </div>
 
         <div class="form-row">
@@ -86,8 +91,10 @@
             </table>
         </div>
 
+        <div id="validationWarnings" style="display: none; padding: 0.75rem 1rem; margin-bottom: 1rem; background-color: #fef3cd; border: 1px solid #ffc107; border-radius: 6px; color: #856404; font-size: 0.9rem;"></div>
+
         <div style="display: flex; gap: 1rem;">
-            <button type="submit" class="btn btn-primary">Record Sale</button>
+            <button type="submit" id="submitBtn" class="btn btn-primary">Record Sale</button>
             <a href="{{ route('sales.index') }}" class="btn btn-secondary">Cancel</a>
         </div>
     </form>
@@ -127,6 +134,32 @@
         document.getElementById('totalDisplay').textContent = `৳${total.toFixed(2)}`;
         document.getElementById('paidDisplay').textContent = `৳${paid.toFixed(2)}`;
         document.getElementById('dueDisplay').textContent = `৳${due.toFixed(2)}`;
+
+        // Validation warnings
+        const warningEl = document.getElementById('validationWarnings');
+        const submitBtn = document.getElementById('submitBtn');
+        let warnings = [];
+
+        if (discount > subtotal && subtotal > 0) {
+            warnings.push('⚠️ Discount cannot exceed subtotal (৳' + subtotal.toFixed(2) + ')');
+        }
+        if (paid > total && total > 0) {
+            warnings.push('⚠️ Paid amount cannot exceed total (৳' + total.toFixed(2) + '). Overpayment is not allowed.');
+        }
+        if (due < 0) {
+            warnings.push('⚠️ Due amount is negative — reduce paid amount to at most ৳' + total.toFixed(2));
+        }
+
+        if (warnings.length > 0) {
+            warningEl.innerHTML = warnings.join('<br>');
+            warningEl.style.display = 'block';
+            submitBtn.disabled = true;
+            submitBtn.style.opacity = '0.5';
+        } else {
+            warningEl.style.display = 'none';
+            submitBtn.disabled = false;
+            submitBtn.style.opacity = '1';
+        }
     }
     
     document.getElementById('product_id').addEventListener('change', calculateSale);
@@ -134,6 +167,15 @@
     document.getElementById('discount').addEventListener('input', calculateSale);
     document.getElementById('paid_amount').addEventListener('input', calculateSale);
     
+    // Prevent form submission when validation fails
+    document.getElementById('saleForm').addEventListener('submit', function(e) {
+        const submitBtn = document.getElementById('submitBtn');
+        if (submitBtn.disabled) {
+            e.preventDefault();
+            alert('Please fix validation errors before submitting.');
+        }
+    });
+
     calculateSale();
 </script>
 @endsection

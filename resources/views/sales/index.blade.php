@@ -41,6 +41,9 @@
                         </td>
                         <td class="text-right">
                             <a href="{{ route('sales.show', $sale) }}" class="btn btn-sm btn-primary">View</a>
+                            @if($sale->due_amount > 0)
+                                <a href="{{ route('payments.create', $sale) }}" class="btn btn-sm btn-success">Collect Payment</a>
+                            @endif
                         </td>
                     </tr>
                 @endforeach

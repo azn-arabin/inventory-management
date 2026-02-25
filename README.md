@@ -1,46 +1,62 @@
 # Inventory Management System with Accounting
 
-A complete Laravel-based inventory management system featuring **double-entry bookkeeping**, comprehensive financial reports, and automated journal entries for every transaction.
+A complete Laravel-based inventory management system featuring **double-entry bookkeeping**, comprehensive financial reports, automated journal entries for every transaction, and a full **payment collection** workflow.
 
 ## 🎯 Project Overview
 
 This system implements a professional-grade inventory management solution with proper accounting principles:
 
 - **Product Management**: Track products with purchase/sell prices and stock levels
-- **Sales Recording**: Record sales with automatic stock adjustment
+- **Sales Recording**: Record sales with automatic stock adjustment and partial/full payments
+- **Payment Collection**: Collect due payments from customers with proper journal entries
 - **Double-Entry Accounting**: Every transaction creates proper debit/credit journal entries
+- **Gross Revenue Method**: Sales Revenue is always recorded at GROSS amount; discounts are tracked as a separate contra-revenue entry
 - **Financial Reports**: Date-wise filtering for sales, expenses, and profit analysis
 - **Chart of Accounts**: Standard accounting structure (Assets, Liabilities, Equity, Revenue, Expenses)
-- **Automated VAT Calculation**: Configurable VAT rate with automatic journal entries
+- **Automated VAT Calculation**: 5% VAT with automatic journal entries
 
 ## 📊 Key Features
 
 ### 1. **Complete Accounting System**
 
 - Implements proper double-entry bookkeeping principles
-- 7 journal entries per sale transaction:
-  - Cash/Accounts Receivable (Debit)
-  - Sales Revenue (Credit)
-  - Discount Given (Debit)
-  - VAT Payable (Credit)
+- **On Product Creation** — 2 journal entries:
+  - Inventory (Debit) — inventory value added
+  - Owner's Equity (Credit) — capital invested
+- **On Sale** — up to 7 journal entries:
+  - Cash (Debit) — paid amount
+  - Accounts Receivable (Debit) — due amount
+  - Sales Revenue (Credit) — **gross subtotal** (before discount)
+  - Discount Given (Debit) — contra-revenue
+  - VAT Payable (Credit) — 5% on after-discount amount
   - Cost of Goods Sold (Debit)
   - Inventory (Credit)
-  - Balance adjustment automatically
+- **On Payment Collection** — 2 journal entries:
+  - Cash (Debit) — amount received
+  - Accounts Receivable (Credit) — balance cleared
 
 ### 2. **Financial Reporting**
 
-- **Financial Report**: Total sales, expenses, profit margin with date filtering
-- **Journal Entries**: Complete audit trail of all transactions
-- **Chart of Accounts**: Full account hierarchy with balances
-- **Sales Report**: Detailed sales analysis with payment status
-- **Inventory Report**: Stock levels, values, and profitability analysis
+- **Financial Report**: Net sales, total expenses (COGS), gross profit, profit margin with **date filtering on journal entries**
+- **Journal Entries**: Complete audit trail of all transactions (purchases, sales, payments)
+- **Chart of Accounts**: Full account hierarchy with running balances
+- **Sales Report**: Detailed sales analysis with payment status tracking
+- **Inventory Report**: Stock levels, values, potential revenue, and profitability analysis
 
 ### 3. **Inventory Management**
 
 - Real-time stock tracking
-- Low stock alerts
+- Low stock alerts (< 10 units)
 - Product profitability analysis
 - Opening stock vs current stock management
+
+### 4. **Payment Collection**
+
+- Partial and full payment support
+- Multiple payment methods: Cash, Bank Transfer, Mobile Banking
+- Payment history per sale with amount + date + method
+- Automatic "Fully Paid" badge when due is cleared
+- Collect Payment button on sales list and sale detail pages
 
 ## 🏗️ System Architecture
 
@@ -53,21 +69,27 @@ This system implements a professional-grade inventory management solution with p
 │ id          │────<│ product_id  │    ┌┤ account_id      │
 │ name        │     │ quantity    │    │├─────────────────┤
 │ purchase_   │     │ unit_price  │    ││ transaction_type│
-│  price      │     │ subtotal    │    ││ transaction_id  │>─┐
-│ sell_price  │     │ discount    │    ││ debit_amount    │  │
-│ opening_    │     │ vat_amount  │    ││ credit_amount   │  │
-│  stock      │     │ total_amount│    │└─────────────────┘  │
-│ current_    │     │ paid_amount │    │                     │
-│  stock      │     │ due_amount  │    │                     │
-└─────────────┘     └─────────────┘    │  ┌─────────────┐   │
-                                        │  │  Accounts   │   │
-                                        └─>│─────────────│<──┘
-                                           │ id          │
-                                           │ code        │
-                                           │ name        │
-                                           │ type        │
-                                           │ balance     │
-                                           └─────────────┘
+│  price      │     │ subtotal    │    ││  (purchase/     │
+│ sell_price  │     │ discount    │    ││   sale/payment) │
+│ opening_    │     │ vat_amount  │    ││ transaction_id  │
+│  stock      │     │ total_amount│    ││ debit_amount    │
+│ current_    │     │ paid_amount │    ││ credit_amount   │
+│  stock      │     │ due_amount  │    │└─────────────────┘
+└─────────────┘     │ sale_date   │    │
+                    │ customer_   │    │  ┌─────────────┐
+                    │  name       │    │  │  Accounts   │
+                    └──────┬──────┘    └─>│─────────────│
+                           │              │ code        │
+                    ┌──────┴──────┐       │ name        │
+                    │  Payments   │       │ type        │
+                    ├─────────────┤       │ balance     │
+                    │ sale_id     │       └─────────────┘
+                    │ amount      │
+                    │ payment_date│
+                    │ payment_    │
+                    │  method     │
+                    │ notes       │
+                    └─────────────┘
 ```
 
 ### Chart of Accounts Structure
@@ -94,11 +116,27 @@ This system implements a professional-grade inventory management solution with p
 
 ## 📝 How Double-Entry Accounting Works
 
-### Example: Sale of 10 units @ ৳100 each (Purchase price: ৳60, Discount: ৳50, Paid: ৳800)
+### Transaction 1: Product Purchase (Adding Inventory)
+
+When a product is created with opening stock, the system invests capital into inventory:
+
+**Example**: Add "Laptop" — Purchase Price: ৳60, Opening Stock: 10
+
+| Account        | Debit   | Credit  |
+| -------------- | ------- | ------- |
+| Inventory      | ৳600.00 |         |
+| Owner's Equity |         | ৳600.00 |
+| **TOTALS**     | ৳600.00 | ৳600.00 |
+
+✅ **Debits = Credits** (Balanced!)
+
+### Transaction 2: Sale with Partial Payment (Gross Revenue Method)
+
+**Example**: Sale of 10 units @ ৳100 each (Purchase price: ৳60, Discount: ৳50, Paid: ৳800)
 
 **Calculations:**
 
-- Subtotal: 10 × ৳100 = ৳1,000
+- Subtotal: 10 × ৳100 = **৳1,000** (gross)
 - Discount: ৳50
 - After Discount: ৳950
 - VAT (5%): ৳47.50
@@ -107,20 +145,39 @@ This system implements a professional-grade inventory management solution with p
 - Due: ৳197.50
 - COGS: 10 × ৳60 = ৳600
 
-**Journal Entries Created:**
+**Journal Entries Created (Gross Revenue Method):**
 
-| Account             | Debit     | Credit    |
-| ------------------- | --------- | --------- |
-| Cash                | ৳800.00   |           |
-| Accounts Receivable | ৳197.50   |           |
-| Sales Revenue       |           | ৳950.00   |
-| Discount Given      | ৳50.00    |           |
-| VAT Payable         |           | ৳47.50    |
-| Cost of Goods Sold  | ৳600.00   |           |
-| Inventory           |           | ৳600.00   |
-| **TOTALS**          | ৳1,647.50 | ৳1,647.50 |
+| Account             | Debit     | Credit        |
+| ------------------- | --------- | ------------- |
+| Cash                | ৳800.00   |               |
+| Accounts Receivable | ৳197.50   |               |
+| Sales Revenue       |           | **৳1,000.00** |
+| Discount Given      | ৳50.00    |               |
+| VAT Payable         |           | ৳47.50        |
+| Cost of Goods Sold  | ৳600.00   |               |
+| Inventory           |           | ৳600.00       |
+| **TOTALS**          | ৳1,647.50 | ৳1,647.50     |
 
 ✅ **Debits = Credits** (Balanced!)
+
+> **Note**: Sales Revenue is credited at the **GROSS** subtotal (৳1,000), not the net. The discount is tracked separately as a contra-revenue entry (Discount Given ৳50). Net Revenue = ৳1,000 − ৳50 = ৳950.
+
+### Transaction 3: Payment Collection
+
+When the customer pays the ৳197.50 due:
+
+| Account             | Debit   | Credit  |
+| ------------------- | ------- | ------- |
+| Cash                | ৳197.50 |         |
+| Accounts Receivable |         | ৳197.50 |
+| **TOTALS**          | ৳197.50 | ৳197.50 |
+
+✅ **Debits = Credits** (Balanced!)
+
+After this payment:
+
+- Cash: ৳800 + ৳197.50 = **৳997.50** (total received)
+- Accounts Receivable: ৳197.50 − ৳197.50 = **৳0** (fully paid)
 
 ## 🚀 Installation & Setup
 
@@ -199,20 +256,39 @@ Fill in:
 - Product Name
 - Description (optional)
 - Purchase Price (cost you paid)
-- Sell Price (price you sell for)
+- Sell Price (price you sell for, must be ≥ purchase price)
 - Opening Stock (initial quantity)
+
+> When saved, the system automatically creates **purchase journal entries**: Debit Inventory / Credit Owner's Equity for the total inventory value.
 
 ### 2. Record Sales
 
-Navigate to **Sales → New Sale**
+Navigate to **Sales → New Sale** (or click "Sell This Product" from product detail)
 
 The system will:
 
+- Pre-select the product if navigated from "Sell This Product"
 - Show available products with stock levels
-- Calculate VAT automatically
+- Calculate VAT automatically (5%)
 - Show real-time sale summary
-- Warn about insufficient stock
-- Create all journal entries automatically
+- Validate: discount cannot exceed subtotal, sufficient stock required
+- Create all 7 journal entries automatically
+- Accept partial or full payment
+
+> **Quick links**: "Don't see your product?" → Add New Product link in the sale form
+
+### 3. Collect Payments
+
+Navigate to **Sales → Collect Payment** (button appears on sales with outstanding due)
+
+Features:
+
+- Shows sale summary (total, already paid, remaining due)
+- Shows payment history (all previous payments)
+- Enter amount (cannot exceed due amount)
+- Choose payment method: Cash / Bank Transfer / Mobile Banking
+- Creates journal entries: Debit Cash / Credit Accounts Receivable
+- Sale automatically marked "Fully Paid" when due reaches ৳0
 
 ### 3. View Financial Reports
 
@@ -253,7 +329,7 @@ Analyze:
 
 ## 🔍 Key Code Components
 
-### SaleController - Journal Entry Creation
+### SaleController - Journal Entry Creation (Gross Method)
 
 Located in: `app/Http/Controllers/SaleController.php`
 
@@ -264,12 +340,42 @@ private function createJournalEntries(Sale $sale, Product $product)
 {
     // 1. Debit Cash for paid amount
     // 2. Debit Accounts Receivable for due amount
-    // 3. Credit Sales Revenue
-    // 4. Debit Discount Given
+    // 3. Credit Sales Revenue at GROSS subtotal (before discount)
+    // 4. Debit Discount Given (contra-revenue)
     // 5. Credit VAT Payable
     // 6. Debit Cost of Goods Sold
     // 7. Credit Inventory
     // All account balances update automatically
+}
+```
+
+### PaymentController - Due Collection
+
+Located in: `app/Http/Controllers/PaymentController.php`
+
+```php
+public function store(Request $request, Sale $sale)
+{
+    // Validates amount <= due_amount
+    // Creates Payment record
+    // Updates Sale paid_amount / due_amount
+    // Creates 2 journal entries:
+    //   Debit Cash (amount received)
+    //   Credit Accounts Receivable (balance cleared)
+}
+```
+
+### ProductController - Purchase Journal Entries
+
+Located in: `app/Http/Controllers/ProductController.php`
+
+```php
+public function store(Request $request)
+{
+    // Creates product
+    // Creates 2 journal entries:
+    //   Debit Inventory (purchase_price × opening_stock)
+    //   Credit Owner's Equity (capital invested)
 }
 ```
 
@@ -310,54 +416,95 @@ task2-inventory-management/
 │   ├── Models/
 │   │   ├── Account.php          # Accounting ledger
 │   │   ├── JournalEntry.php     # Transaction records
+│   │   ├── Payment.php          # Payment collections
 │   │   ├── Product.php          # Product catalog
-│   │   └── Sale.php             # Sales transactions
+│   │   ├── Sale.php             # Sales transactions
+│   │   └── User.php             # Authentication
 │   └── Http/Controllers/
-│       ├── ProductController.php    # Product CRUD
-│       ├── SaleController.php       # Sales + Accounting
-│       ├── ReportController.php     # All reports
-│       └── DashboardController.php  # Summary stats
+│       ├── DashboardController.php  # Summary stats
+│       ├── PaymentController.php    # Payment collection
+│       ├── ProductController.php    # Product CRUD + purchase entries
+│       ├── ReportController.php     # All reports (date-filtered)
+│       └── SaleController.php       # Sales + sale journal entries
 ├── database/
-│   ├── migrations/              # Database schema
+│   ├── migrations/              # 7 migration files
+│   │   ├── ..._create_users_table.php
+│   │   ├── ..._create_accounts_table.php
+│   │   ├── ..._create_products_table.php
+│   │   ├── ..._create_sales_table.php
+│   │   ├── ..._create_journal_entries_table.php
+│   │   └── ..._create_payments_table.php
 │   └── seeders/
-│       └── AccountSeeder.php    # Chart of Accounts setup
+│       └── AccountSeeder.php    # Chart of Accounts (17 accounts)
 ├── resources/views/
-│   ├── layout.blade.php         # Base template
+│   ├── layout.blade.php         # Base template with navbar
 │   ├── dashboard.blade.php      # Main dashboard
 │   ├── products/                # Product management views
+│   │   ├── index.blade.php      #   List with sell/edit buttons
+│   │   ├── create.blade.php     #   Add product form
+│   │   ├── edit.blade.php       #   Edit product form
+│   │   └── show.blade.php       #   Detail + purchase journal entries
 │   ├── sales/                   # Sales recording views
+│   │   ├── index.blade.php      #   List with collect payment buttons
+│   │   ├── create.blade.php     #   New sale form (product pre-select)
+│   │   └── show.blade.php       #   Detail + journal entries + payments
+│   ├── payments/
+│   │   └── create.blade.php     # Payment collection form + history
 │   └── reports/                 # Financial reporting views
+│       ├── index.blade.php      #   Report hub
+│       ├── financial.blade.php  #   P&L with date filtering
+│       ├── journal_entries.blade.php  # Audit trail
+│       ├── chart_of_accounts.blade.php # Account balances
+│       ├── sales.blade.php      #   Sales analysis
+│       └── inventory.blade.php  #   Stock & profitability
 └── routes/
-    └── web.php                  # Application routes
+    └── web.php                  # All application routes
 ```
 
 ## 🧪 Testing the System
 
-### Test Scenario 1: Basic Sale
+### Test Scenario 1: Complete Sale & Payment Lifecycle
 
-1. Add a product: "Laptop" - Purchase: ৳50,000, Sell: ৳75,000, Stock: 10
-2. Record a sale: Quantity: 2, Discount: ৳1,000, Paid: ৳100,000
-3. Expected Results:
-   - Subtotal: ৳150,000
-   - After Discount: ৳149,000
-   - VAT (5%): ৳7,450
-   - Total: ৳156,450
-   - Due: ৳56,450
-   - Current Stock: 8 units
-   - 7 journal entries created
-   - Cash account: +৳100,000
-   - Accounts Receivable: +৳56,450
+1. **Add a product**: "Laptop" — Purchase: ৳50,000, Sell: ৳75,000, Stock: 10
+   - ✅ Verify: Inventory account += ৳500,000, Owner's Equity += ৳500,000
+2. **Record a sale**: Quantity: 2, Discount: ৳1,000, Paid: ৳100,000
+   - Expected:
+     - Subtotal: ৳150,000 (gross)
+     - After Discount: ৳149,000
+     - VAT (5%): ৳7,450
+     - Total: ৳156,450
+     - Due: ৳56,450
+   - ✅ Verify: 7 journal entries created, Sales Revenue = ৳150,000 (gross)
+   - ✅ Verify: Discount Given = ৳1,000, Cash = ৳100,000, A/R = ৳56,450
+3. **Collect payment**: ৳56,450 via Bank Transfer
+   - ✅ Verify: Cash += ৳56,450, A/R = ৳0 (cleared), Sale shows "Fully Paid"
+4. **Check financial report**: All debits = all credits (balanced)
 
-### Test Scenario 2: Financial Report
+### Test Scenario 2: Multiple Partial Payments
 
-1. Record multiple sales over different dates
-2. Go to Reports → Financial Report
+1. Create product, make sale with ৳0 initial payment (fully on credit)
+2. Collect 3 partial payments over different dates
+3. ✅ Verify: Each payment creates 2 journal entries (Cash debit / AR credit)
+4. ✅ Verify: Sale's due amount decreases correctly with each payment
+
+### Test Scenario 3: Financial Report Date Filtering
+
+1. Record sales on different dates
+2. Go to **Reports → Financial Report**
 3. Filter by date range
-4. Verify:
-   - Total Sales = Sum of all sale subtotals minus discounts
-   - Total Expenses = Sum of COGS
-   - Gross Profit = Total Sales - Total Expenses
-   - Profit Margin = (Gross Profit / Total Sales) × 100
+4. ✅ Verify:
+   - Revenue/expense figures change when dates change (computed from filtered journal entries)
+   - Net Sales = Sum of filtered Sales Revenue − Discount Given
+   - Total Expenses = Sum of filtered COGS
+   - Gross Profit = Net Sales − Total Expenses
+   - Profit Margin = (Gross Profit / Net Sales) × 100
+
+### Test Scenario 4: Validation Checks
+
+1. Try selling more than available stock → **Error: Insufficient stock**
+2. Try discount > subtotal → **Error: Discount cannot exceed subtotal**
+3. Try paying more than due → **Error: Amount cannot exceed due amount**
+4. Try sell price < purchase price → **Error: Sell price must be ≥ purchase price**
 
 ## 🛠️ Troubleshooting
 
@@ -396,13 +543,36 @@ The system seeds these accounts automatically:
 
 This project demonstrates:
 
-1. ✅ **Laravel Framework**: Models, Controllers, Views, Migrations, Seeders
-2. ✅ **Database Design**: Relational data with foreign keys
-3. ✅ **Accounting Principles**: Double-entry bookkeeping, Chart of Accounts
-4. ✅ **Business Logic**: Transaction processing, inventory management
-5. ✅ **Financial Reporting**: Date filtering, calculations, analysis
-6. ✅ **Frontend Development**: Blade templates, CSS, JavaScript
-7. ✅ **Data Integrity**: Database transactions, validation, error handling
+1. ✅ **Laravel Framework**: Models, Controllers, Views, Migrations, Seeders, Relationships
+2. ✅ **Database Design**: Relational data with foreign keys, polymorphic-like journal references
+3. ✅ **Accounting Principles**: Double-entry bookkeeping, Chart of Accounts, Gross Revenue Method
+4. ✅ **Business Logic**: Transaction processing, inventory management, payment collection
+5. ✅ **Financial Reporting**: Date-filtered P&L, journal entry audit trail, account balances
+6. ✅ **Frontend Development**: Blade templates, dynamic forms with JavaScript, responsive CSS
+7. ✅ **Data Integrity**: DB transactions, server-side + client-side validation, balanced entries
+8. ✅ **Payment Workflow**: Partial/full payments, multi-method support, AR reconciliation
+
+## 📄 Routes Summary
+
+| Method   | URI                           | Controller                       | Description                              |
+| -------- | ----------------------------- | -------------------------------- | ---------------------------------------- |
+| GET      | `/`                           | DashboardController@index        | Dashboard with summary stats             |
+| GET/POST | `/products`                   | ProductController@index/store    | List / create products                   |
+| GET      | `/products/create`            | ProductController@create         | New product form                         |
+| GET      | `/products/{id}`              | ProductController@show           | Product detail + journal entries         |
+| GET/PUT  | `/products/{id}/edit`         | ProductController@edit/update    | Edit product                             |
+| DELETE   | `/products/{id}`              | ProductController@destroy        | Delete product                           |
+| GET/POST | `/sales`                      | SaleController@index/store       | List / create sales                      |
+| GET      | `/sales/create`               | SaleController@create            | New sale form (supports ?product_id)     |
+| GET      | `/sales/{id}`                 | SaleController@show              | Sale detail + journal entries + payments |
+| GET      | `/sales/{id}/payments/create` | PaymentController@create         | Payment collection form                  |
+| POST     | `/sales/{id}/payments`        | PaymentController@store          | Process payment                          |
+| GET      | `/reports`                    | ReportController@index           | Report hub                               |
+| GET      | `/reports/financial`          | ReportController@financial       | P&L with date filter                     |
+| GET      | `/reports/journal-entries`    | ReportController@journalEntries  | All journal entries                      |
+| GET      | `/reports/chart-of-accounts`  | ReportController@chartOfAccounts | Account balances                         |
+| GET      | `/reports/sales`              | ReportController@sales           | Sales report with date filter            |
+| GET      | `/reports/inventory`          | ReportController@inventory       | Inventory analysis                       |
 
 ## 📄 License
 

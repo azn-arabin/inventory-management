@@ -54,6 +54,58 @@
     </div>
 
     <h2 style="font-size: 1.5rem; margin-top: 2rem; margin-bottom: 1rem; color: #0062cc; border-bottom: 2px solid #0062cc; padding-bottom: 0.5rem;">
+        Payment History
+    </h2>
+
+    <table>
+        <thead>
+            <tr>
+                <th>Date</th>
+                <th>Type</th>
+                <th>Method</th>
+                <th class="text-right">Amount</th>
+                <th>Notes</th>
+            </tr>
+        </thead>
+        <tbody>
+            @php
+                $initialPayment = $sale->paid_amount - ($sale->payments ? $sale->payments->sum('amount') : 0);
+            @endphp
+            @if($initialPayment > 0)
+                <tr style="background-color: #f0fdf4;">
+                    <td>{{ $sale->sale_date->format('Y-m-d H:i') }}</td>
+                    <td><span class="badge badge-success">Initial</span></td>
+                    <td>Cash</td>
+                    <td class="text-right">৳{{ number_format($initialPayment, 2) }}</td>
+                    <td>Payment at time of sale</td>
+                </tr>
+            @endif
+            @if($sale->payments && $sale->payments->count() > 0)
+                @foreach($sale->payments as $payment)
+                    <tr>
+                        <td>{{ $payment->payment_date->format('Y-m-d H:i') }}</td>
+                        <td><span class="badge badge-primary">Collection</span></td>
+                        <td>{{ ucfirst($payment->payment_method) }}</td>
+                        <td class="text-right">৳{{ number_format($payment->amount, 2) }}</td>
+                        <td>{{ $payment->notes ?? '-' }}</td>
+                    </tr>
+                @endforeach
+            @endif
+            <tr style="font-weight: bold; background-color: #f3f4f6; border-top: 2px solid #0062cc;">
+                <td colspan="3">Total Paid</td>
+                <td class="text-right">৳{{ number_format($sale->paid_amount, 2) }}</td>
+                <td>
+                    @if($sale->due_amount > 0)
+                        <span class="badge badge-warning">Due: ৳{{ number_format($sale->due_amount, 2) }}</span>
+                    @else
+                        <span class="badge badge-success">Fully Paid</span>
+                    @endif
+                </td>
+            </tr>
+        </tbody>
+    </table>
+
+    <h2 style="font-size: 1.5rem; margin-top: 2rem; margin-bottom: 1rem; color: #0062cc; border-bottom: 2px solid #0062cc; padding-bottom: 0.5rem;">
         Journal Entries (Double-Entry Bookkeeping)
     </h2>
 
@@ -96,6 +148,36 @@
                     </td>
                 </tr>
             @endforeach
+            @if(isset($paymentJournalEntries) && $paymentJournalEntries->count() > 0)
+                <tr style="background-color: #f0fdf4;">
+                    <td colspan="4" style="font-weight: bold; color: #16a34a;">Payment Collection Entries</td>
+                </tr>
+                @foreach($paymentJournalEntries as $entry)
+                    <tr style="background-color: #f0fdf4;">
+                        <td>
+                            <strong>{{ $entry->account->name }}</strong>
+                            <br><small class="text-muted">{{ $entry->account->code }} - {{ ucfirst($entry->account->type) }}</small>
+                        </td>
+                        <td>{{ $entry->description }}</td>
+                        <td class="text-right">
+                            @if($entry->debit_amount > 0)
+                                ৳{{ number_format($entry->debit_amount, 2) }}
+                                @php $totalDebits += $entry->debit_amount; @endphp
+                            @else
+                                -
+                            @endif
+                        </td>
+                        <td class="text-right">
+                            @if($entry->credit_amount > 0)
+                                ৳{{ number_format($entry->credit_amount, 2) }}
+                                @php $totalCredits += $entry->credit_amount; @endphp
+                            @else
+                                -
+                            @endif
+                        </td>
+                    </tr>
+                @endforeach
+            @endif
             <tr style="font-weight: bold; background-color: #f3f4f6; border-top: 2px solid #0062cc;">
                 <td colspan="2">TOTALS</td>
                 <td class="text-right">৳{{ number_format($totalDebits, 2) }}</td>
@@ -115,6 +197,11 @@
 
     <div style="margin-top: 2rem;">
         <a href="{{ route('sales.index') }}" class="btn btn-secondary">Back to Sales</a>
+        @if($sale->due_amount > 0)
+            <a href="{{ route('payments.create', $sale) }}" class="btn btn-success">💰 Collect Payment (Due: ৳{{ number_format($sale->due_amount, 2) }})</a>
+        @else
+            <span class="badge badge-success" style="font-size: 0.9rem; padding: 0.5rem 1rem; vertical-align: middle;">✓ Fully Paid</span>
+        @endif
         <a href="{{ route('sales.create') }}" class="btn btn-primary">New Sale</a>
     </div>
 </div>

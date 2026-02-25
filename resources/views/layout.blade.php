@@ -246,6 +246,11 @@
             color: #92400e;
         }
         
+        .badge-primary {
+            background-color: #dbeafe;
+            color: #1e40af;
+        }
+        
         .pagination {
             display: flex;
             gap: 0.5rem;

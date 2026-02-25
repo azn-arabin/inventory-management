@@ -26,7 +26,7 @@
                         <td>
                             <strong>{{ $product->name }}</strong>
                             @if($product->description)
-                                <br><small class="text-muted">{{ Str::limit($product->description, 50) }}</small>
+                                <br><small class="text-muted">{{ \Illuminate\Support\Str::limit($product->description, 50) }}</small>
                             @endif
                         </td>
                         <td class="text-right">৳{{ number_format($product->purchase_price, 2) }}</td>

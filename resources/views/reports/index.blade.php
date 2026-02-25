@@ -18,13 +18,13 @@
         <div class="card">
             <h3 style="margin-bottom: 1rem;">📖 Journal Entries</h3>
             <p style="color: #6b7280; margin-bottom: 1rem;">View all accounting journal entries with double-entry bookkeeping details</p>
-            <a href="{{ route('reports.journal-entries') }}" class="btn btn-primary">View Report</a>
+            <a href="{{ route('reports.journal_entries') }}" class="btn btn-primary">View Report</a>
         </div>
 
         <div class="card">
             <h3 style="margin-bottom: 1rem;">🏦 Chart of Accounts</h3>
             <p style="color: #6b7280; margin-bottom: 1rem;">Complete chart of accounts with current balances and account types</p>
-            <a href="{{ route('reports.chart-of-accounts') }}" class="btn btn-primary">View Report</a>
+            <a href="{{ route('reports.chart_of_accounts') }}" class="btn btn-primary">View Report</a>
         </div>
 
         <div class="card">

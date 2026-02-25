@@ -22,11 +22,12 @@
             </tr>
         </thead>
         <tbody>
-            @php $currentTransaction = null; @endphp
+            @php $currentTransactionKey = null; @endphp
             @foreach($journalEntries as $entry)
                 @php
-                    $newTransaction = ($currentTransaction != $entry->transaction_id);
-                    $currentTransaction = $entry->transaction_id;
+                    $transactionKey = $entry->transaction_type . '-' . $entry->transaction_id;
+                    $newTransaction = ($currentTransactionKey != $transactionKey);
+                    $currentTransactionKey = $transactionKey;
                 @endphp
                 <tr style="{{ $newTransaction ? 'border-top: 2px solid #0062cc;' : '' }}">
                     <td>
@@ -55,7 +56,16 @@
                     </td>
                     <td>
                         @if($newTransaction)
-                            <a href="{{ route('sales.show', $entry->transaction_id) }}" class="btn btn-sm btn-primary">View Sale #{{ $entry->transaction_id }}</a>
+                            @if($entry->transaction_type === 'sale')
+                                <a href="{{ route('sales.show', $entry->transaction_id) }}" class="btn btn-sm btn-primary">View Sale #{{ $entry->transaction_id }}</a>
+                            @elseif($entry->transaction_type === 'payment')
+                                @php $paymentSale = \App\Models\Payment::find($entry->transaction_id); @endphp
+                                @if($paymentSale && $paymentSale->sale_id)
+                                    <a href="{{ route('sales.show', $paymentSale->sale_id) }}" class="btn btn-sm" style="background-color: #059669; color: white;">Payment for Sale #{{ $paymentSale->sale_id }}</a>
+                                @endif
+                            @elseif($entry->transaction_type === 'purchase')
+                                <a href="{{ route('products.show', $entry->transaction_id) }}" class="btn btn-sm btn-secondary">View Product #{{ $entry->transaction_id }}</a>
+                            @endif
                         @endif
                     </td>
                 </tr>

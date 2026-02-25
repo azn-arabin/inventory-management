@@ -23,43 +23,86 @@ class ReportController extends Controller
      */
     public function financial(Request $request)
     {
-        $query = Sale::query();
+        $startDate = $request->input('start_date');
+        $endDate = $request->input('end_date');
 
-        if ($request->has('start_date') && $request->start_date) {
-            $query->where('sale_date', '>=', $request->start_date);
+        // Build sales query with date filters
+        $salesQuery = Sale::query();
+        if ($startDate) {
+            $salesQuery->where('sale_date', '>=', $startDate);
+        }
+        if ($endDate) {
+            $salesQuery->where('sale_date', '<=', $endDate . ' 23:59:59');
         }
 
-        if ($request->has('end_date') && $request->end_date) {
-            $query->where('sale_date', '<=', $request->end_date . ' 23:59:59');
+        // Clone query before aggregating (sum() consumes the builder)
+        $totalSales = (clone $salesQuery)->sum('subtotal');
+        $totalDiscount = (clone $salesQuery)->sum('discount');
+        $totalVat = (clone $salesQuery)->sum('vat_amount');
+        $totalPaid = (clone $salesQuery)->sum('paid_amount');
+        $totalDue = (clone $salesQuery)->sum('due_amount');
+        $totalExpenses = (clone $salesQuery)->sum(DB::raw('quantity * (SELECT purchase_price FROM products WHERE id = sales.product_id)'));
+        $netSales = $totalSales - $totalDiscount;
+        $grossProfit = $netSales - $totalExpenses;
+        $profitMargin = $netSales > 0 ? ($grossProfit / $netSales) * 100 : 0;
+
+        // Build journal entries query with same date filters for accurate account-level reporting
+        $journalQuery = JournalEntry::query();
+        if ($startDate) {
+            $journalQuery->where('entry_date', '>=', $startDate);
+        }
+        if ($endDate) {
+            $journalQuery->where('entry_date', '<=', $endDate . ' 23:59:59');
         }
 
-        // Calculate totals
-        $totalSales = $query->sum('subtotal');
-        $totalDiscount = $query->sum('discount');
-        $totalExpenses = $query->sum(DB::raw('quantity * (SELECT purchase_price FROM products WHERE id = sales.product_id)'));
-        $totalPaid = $query->sum('paid_amount');
-        $totalDue = $query->sum('due_amount');
-        $grossProfit = $totalSales - $totalDiscount - $totalExpenses;
-        $profitMargin = $totalSales > 0 ? ($grossProfit / $totalSales) * 100 : 0;
+        // Get revenue accounts with filtered balances
+        $revenueAccountIds = Account::where('type', 'revenue')->pluck('id', 'code');
+        $revenueAccounts = [];
+        foreach ($revenueAccountIds as $code => $accountId) {
+            $account = Account::find($accountId);
+            $debits = (clone $journalQuery)->where('account_id', $accountId)->sum('debit_amount');
+            $credits = (clone $journalQuery)->where('account_id', $accountId)->sum('credit_amount');
+            // Revenue is credit-normal: balance = credits - debits
+            $filteredBalance = $credits - $debits;
+            $revenueAccounts[] = (object) [
+                'name' => $account->name,
+                'code' => $account->code,
+                'balance' => $filteredBalance,
+            ];
+        }
 
-        // Get VAT payable from account
-        $vatPayableAccount = Account::where('code', '2120')->first();
-        $discountAccount = Account::where('code', '4200')->first();
+        // Get expense accounts with filtered balances
+        $expenseAccountIds = Account::where('type', 'expense')->pluck('id', 'code');
+        $expenseAccounts = [];
+        foreach ($expenseAccountIds as $code => $accountId) {
+            $account = Account::find($accountId);
+            $debits = (clone $journalQuery)->where('account_id', $accountId)->sum('debit_amount');
+            $credits = (clone $journalQuery)->where('account_id', $accountId)->sum('credit_amount');
+            // Expense is debit-normal: balance = debits - credits
+            $filteredBalance = $debits - $credits;
+            $expenseAccounts[] = (object) [
+                'name' => $account->name,
+                'code' => $account->code,
+                'balance' => $filteredBalance,
+            ];
+        }
+
+        // VAT payable for the filtered period
+        $vatAccountId = Account::where('code', '2120')->value('id');
+        $vatDebits = $vatAccountId ? (clone $journalQuery)->where('account_id', $vatAccountId)->sum('debit_amount') : 0;
+        $vatCredits = $vatAccountId ? (clone $journalQuery)->where('account_id', $vatAccountId)->sum('credit_amount') : 0;
+        $filteredVatPayable = $vatCredits - $vatDebits;
 
         $data = [
-            'totalSales' => $totalSales - $totalDiscount,
+            'totalSales' => $netSales,
             'totalExpenses' => $totalExpenses,
             'grossProfit' => $grossProfit,
             'profitMargin' => $profitMargin,
             'totalDiscount' => $totalDiscount,
-            'vatPayable' => $vatPayableAccount ? $vatPayableAccount->balance : 0,
+            'vatPayable' => $filteredVatPayable,
             'totalPaid' => $totalPaid,
             'totalDue' => $totalDue,
         ];
-
-        // Get accounts by type
-        $revenueAccounts = Account::whereIn('type', ['revenue'])->get();
-        $expenseAccounts = Account::whereIn('type', ['expense'])->get();
 
         return view('reports.financial', compact('data', 'revenueAccounts', 'expenseAccounts'));
     }
