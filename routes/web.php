@@ -4,6 +4,7 @@ use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\ProductController;
 use App\Http\Controllers\SaleController;
 use App\Http\Controllers\ReportController;
+use App\Http\Controllers\PaymentController;
 use Illuminate\Support\Facades\Route;
 
 Route::get('/', [DashboardController::class, 'index'])->name('dashboard');
@@ -13,6 +14,10 @@ Route::resource('products', ProductController::class);
 
 // Sale routes
 Route::resource('sales', SaleController::class);
+
+// Payment routes (collect due payments)
+Route::get('/sales/{sale}/payments/create', [PaymentController::class, 'create'])->name('payments.create');
+Route::post('/sales/{sale}/payments', [PaymentController::class, 'store'])->name('payments.store');
 
 // Report routes
 Route::prefix('reports')->name('reports.')->group(function () {
